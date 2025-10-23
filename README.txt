@@ -1,10 +1,11 @@
 Nome: Gustavo Henrique Andrade Cavalcanti
 Matrícula: 222034109
+Trabalho: Homework 3 - BDD
 
 URL do repositório no GitHub:
-https://github.com/GustavoHCavalcanti/HW2
+https://github.com/GustavoHCavalcanti/HW3.git
 
 Instruções:
-O código fonte está incluído neste pacote compactado.
+Todos os cenários Cucumber executam com sucesso (5/5 passed).
 
 
