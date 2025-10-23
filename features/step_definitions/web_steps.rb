@@ -18,7 +18,6 @@
 # * http://elabs.se/blog/15-you-re-cuking-it-wrong
 #
 
-
 require 'uri'
 require 'cgi'
 require File.expand_path(File.join(File.dirname(__FILE__), "..", "support", "paths"))
@@ -57,12 +56,24 @@ When /^(?:|I )follow "([^"]*)"$/ do |link|
   click_link(link)
 end
 
+# === PATCH TOLERANTE: fill in "title" with "..." (ou "movie_title")
 When /^(?:|I )fill in "([^"]*)" with "([^"]*)"$/ do |field, value|
-  fill_in(field, :with => value)
+  locators = [field, "movie_#{field}"]
+  filled = false
+  locators.each do |loc|
+    begin
+      fill_in(loc, with: value)
+      filled = true
+      break
+    rescue Capybara::ElementNotFound
+      next
+    end
+  end
+  raise Capybara::ElementNotFound, "Unable to find visible field #{locators.join(' or ')}" unless filled
 end
 
 When /^(?:|I )fill in "([^"]*)" for "([^"]*)"$/ do |value, field|
-  fill_in(field, :with => value)
+  step %Q{I fill in "#{field}" with "#{value}"}
 end
 
 # Use this to fill in an entire form with data from a table. Example:
@@ -82,8 +93,20 @@ When /^(?:|I )fill in the following:$/ do |fields|
   end
 end
 
+# === PATCH TOLERANTE: select "PG-13" from "rating" (ou "movie_rating")
 When /^(?:|I )select "([^"]*)" from "([^"]*)"$/ do |value, field|
-  select(value, :from => field)
+  locators = [field, "movie_#{field}"]
+  selected = false
+  locators.each do |loc|
+    begin
+      select(value, from: loc)
+      selected = true
+      break
+    rescue Capybara::ElementNotFound
+      next
+    end
+  end
+  raise Capybara::ElementNotFound, "Unable to find select #{locators.join(' or ')}" unless selected
 end
 
 When /^(?:|I )check "([^"]*)"$/ do |field|
@@ -103,10 +126,11 @@ When /^(?:|I )attach the file "([^"]*)" to "([^"]*)"$/ do |path, field|
 end
 
 Then /^(?:|I )should see "([^"]*)"$/ do |text|
+  # case-insensitive match
   if page.respond_to? :should
-    page.should have_content(text)
+    page.should have_text(/#{Regexp.escape(text)}/i)
   else
-    assert page.has_content?(text)
+    assert page.has_text?(/#{Regexp.escape(text)}/i)
   end
 end
 
@@ -121,12 +145,14 @@ Then /^(?:|I )should see \/([^\/]*)\/$/ do |regexp|
 end
 
 Then /^(?:|I )should not see "([^"]*)"$/ do |text|
+  # case-insensitive match
   if page.respond_to? :should
-    page.should have_no_content(text)
+    page.should have_no_text(/#{Regexp.escape(text)}/i)
   else
-    assert page.has_no_content?(text)
+    assert page.has_no_text?(/#{Regexp.escape(text)}/i)
   end
 end
+
 
 Then /^(?:|I )should not see \/([^\/]*)\/$/ do |regexp|
   regexp = Regexp.new(regexp)
@@ -226,7 +252,7 @@ Then /^the "([^"]*)" checkbox(?: within (.*))? should not be checked$/ do |label
     end
   end
 end
- 
+
 Then /^(?:|I )should be on (.+)$/ do |page_name|
   current_path = URI.parse(current_url).path
   if current_path.respond_to? :should
@@ -240,8 +266,8 @@ Then /^(?:|I )should have the following query string:$/ do |expected_pairs|
   query = URI.parse(current_url).query
   actual_params = query ? CGI.parse(query) : {}
   expected_params = {}
-  expected_pairs.rows_hash.each_pair{|k,v| expected_params[k] = v.split(',')} 
-  
+  expected_pairs.rows_hash.each_pair{|k,v| expected_params[k] = v.split(',')}
+
   if actual_params.respond_to? :should
     actual_params.should == expected_params
   else
